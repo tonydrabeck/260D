@@ -4,6 +4,23 @@ import os
 import pickle
 
 
+# Calculates mass loss increase per example and sorts data based on MLI
+# 
+def calculate_max_loss_increase(data, epochs):
+    max_loss_increase_dict = {}
+    for example_id, example_stats in data.items():
+        ex_loss = np.array(example_stats[0][:epochs])
+        if np.shape(ex_loss)[0]>1:
+            max_loss_increase = np.max(ex_loss - np.minimum.accumulate(ex_loss))
+            max_loss_increase_dict[example_id] = max_loss_increase
+
+        #print(example_id, ex_loss, max_loss_increase)
+
+    #Sort by MLI
+    max_loss_increase_dict_sorted = {k: v for k, v in sorted(max_loss_increase_dict.items(), key=lambda item: item[1])}
+    return max_loss_increase_dict_sorted
+
+
 # Calculates forgetting statistics per example
 #
 # diag_stats: dictionary created during training containing 
@@ -135,11 +152,18 @@ if __name__ == "__main__":
         help=
         'arguments and argument values to select input filenames, i.e. arg1 val1 arg2 val2'
     )
+    
     parser.add_argument('--output_dir', type=str, required=True)
     parser.add_argument(
         '--output_name',
         type=str,
         required=True)
+    parser.add_argument('--output_dir_MLI', type=str, required=True)
+    parser.add_argument(
+        '--output_name_MLI',
+        type=str,
+        required=True)
+    
     parser.add_argument('--epochs', type=int, default=200)
 
     args = parser.parse_args()
@@ -177,6 +201,9 @@ if __name__ == "__main__":
         ordered_examples, ordered_values = sort_examples_by_forgetting(
             unlearned_per_presentation_all, first_learned_all, args.epochs)
 
+        print(type(ordered_examples), np.shape(ordered_examples))
+        print(type(ordered_values), np.shape(ordered_values))
+        
         # Save sorted output
         if args.output_name.endswith('.pkl'):
             with open(os.path.join(args.output_dir, args.output_name),
@@ -193,3 +220,14 @@ if __name__ == "__main__":
                     'indices': ordered_examples,
                     'forgetting counts': ordered_values
                 }, fout)
+
+mli_sorted = calculate_max_loss_increase(loaded, args.epochs)
+ordered_examples = np.array(list(mli_sorted.keys()))
+ordered_values = np.array(list(mli_sorted.values()))
+with open(
+        os.path.join(args.output_dir, args.output_name_MLI + '.pkl'),
+        'wb') as fout:
+    pickle.dump({
+        'indices': ordered_examples,
+        'max loss increase': ordered_values
+    }, fout)
