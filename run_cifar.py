@@ -482,7 +482,7 @@ else:
         'Specified model not recognized. Options are: resnet18 and wideresnet')
 
 # Setup loss
-# model = model.cuda()
+#model = model.cuda()
 criterion = nn.CrossEntropyLoss().cuda()
 criterion.__init__(reduce=False)
 
