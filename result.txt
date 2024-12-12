@@ -1,0 +1,50 @@
+=> Training Epoch #1
+| Epoch [  1/ 10] Iter[293/293]         Loss: 1.3140 Acc@1: 50.077%
+| Validation Epoch #1                   Loss: 1.3088 Acc@1: 62.95%
+| Saving Best model...                  Top1 = 62.95%
+| Elapsed time : 0:05:32
+
+=> Training Epoch #2
+| Epoch [  2/ 10] Iter[293/293]         Loss: 1.2570 Acc@1: 56.629%
+| Validation Epoch #2                   Loss: 0.8036 Acc@1: 70.64%
+| Saving Best model...                  Top1 = 70.64%
+| Elapsed time : 0:08:04
+
+=> Training Epoch #3
+| Epoch [  3/ 10] Iter[293/293]         Loss: 1.0448 Acc@1: 62.333%
+| Validation Epoch #3                   Loss: 0.8245 Acc@1: 72.91%
+| Saving Best model...                  Top1 = 72.91%
+| Elapsed time : 0:10:41
+
+=> Training Epoch #4
+| Epoch [  4/ 10] Iter[293/293]         Loss: 0.8817 Acc@1: 66.045%
+| Validation Epoch #4                   Loss: 0.9572 Acc@1: 75.61%
+| Saving Best model...                  Top1 = 75.61%
+| Elapsed time : 0:13:15
+
+=> Training Epoch #5
+| Epoch [  5/ 10] Iter[293/293]         Loss: 0.9768 Acc@1: 68.549%
+| Validation Epoch #5                   Loss: 0.8425 Acc@1: 77.38%
+| Saving Best model...                  Top1 = 77.38%
+| Elapsed time : 0:16:29
+
+=> Training Epoch #6
+| Epoch [  6/ 10] Iter[293/293]         Loss: 0.9150 Acc@1: 70.869%
+| Validation Epoch #6                   Loss: 0.7526 Acc@1: 77.31%
+| Elapsed time : 0:20:35
+
+=> Training Epoch #7
+| Epoch [  7/ 10] Iter[293/293]         Loss: 0.8817 Acc@1: 72.811%
+| Validation Epoch #7                   Loss: 0.6258 Acc@1: 79.13%
+| Saving Best model...                  Top1 = 79.13%
+| Elapsed time : 0:23:40
+
+=> Training Epoch #8
+| Epoch [  8/ 10] Iter[293/293]         Loss: 0.6291 Acc@1: 74.224%
+| Validation Epoch #8                   Loss: 0.4701 Acc@1: 78.19%
+| Elapsed time : 0:27:54
+
+=> Training Epoch #9
+| Epoch [  9/ 10] Iter[293/293]         Loss: 0.7033 Acc@1: 75.544%
+| Validation Epoch #9                   Loss: 0.5449 Acc@1: 79.10%
+| Elapsed time : 0:31:04

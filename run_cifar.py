@@ -353,26 +353,26 @@ os.makedirs(args.output_dir, exist_ok=True)
 if args.dataset == 'cifar10':
     num_classes = 10
     train_dataset = datasets.CIFAR10(
-        root='/tmp/data/',
+        root='data',
         train=True,
         transform=train_transform,
         download=True)
 
     test_dataset = datasets.CIFAR10(
-        root='/tmp/data/',
+        root='data',
         train=False,
         transform=test_transform,
         download=True)
 elif args.dataset == 'cifar100':
     num_classes = 100
     train_dataset = datasets.CIFAR100(
-        root='/tmp/data/',
+        root='data',
         train=True,
         transform=train_transform,
         download=True)
 
     test_dataset = datasets.CIFAR100(
-        root='/tmp/data/',
+        root='data',
         train=False,
         transform=test_transform,
         download=True)
@@ -482,7 +482,7 @@ else:
         'Specified model not recognized. Options are: resnet18 and wideresnet')
 
 # Setup loss
-#model = model.cuda()
+model = model.cuda()
 criterion = nn.CrossEntropyLoss().cuda()
 criterion.__init__(reduce=False)
 
