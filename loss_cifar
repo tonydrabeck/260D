@@ -1,0 +1,296 @@
+#!pip install Cutout
+#!git clone https://github.com/uoguelph-mlrg/Cutout.git
+
+import  Cutout
+from Cutout.util.misc import CSVLogger
+from Cutout.util.cutout import Cutout
+
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader, TensorDataset
+import torch
+import torch.nn as nn
+from torch.optim import SGD
+import pickle
+from Cutout.model.resnet import ResNet18  
+
+transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.5,), (0.5,))
+])
+train_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+test_dataset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+
+batch_size = 128
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = ResNet18(num_classes=10).to(device)
+
+criterion = nn.CrossEntropyLoss()
+optimizer = SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=5e-4)
+
+def train_epoch(model, loader, optimizer, criterion):
+    model.train()
+    for images, labels in loader:
+        images, labels = images.to(device), labels.to(device)
+        optimizer.zero_grad()
+        outputs = model(images)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+
+def evaluate(model, loader, criterion):
+    model.eval()
+    correct = 0
+    total = 0
+    total_loss = 0
+    with torch.no_grad():
+        for images, labels in loader:
+            images, labels = images.to(device), labels.to(device)
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            total_loss += loss.item()
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+    accuracy = 100 * correct / total
+    return total_loss / len(loader), accuracy
+
+def calculate_gradient_loss(model, inputs, targets):
+    inputs.requires_grad = True
+    outputs = model(inputs)
+    loss = criterion(outputs, targets)
+    loss.backward()
+    return inputs.grad.norm(2, dim=1).cpu().detach().numpy()
+
+num_epochs = 100
+train_gradient_losses = []
+test_gradient_losses = []
+train_accuracies = []
+test_accuracies = []
+
+
+
+
+
+
+try:
+    with open('trained_model_epoch.pkl', 'rb') as f:
+        checkpoint = pickle.load(f)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        train_gradient_losses = checkpoint['train_gradient_losses']
+        test_gradient_losses = checkpoint['test_gradient_losses']
+        train_accuracies = checkpoint['train_accuracies']
+        test_accuracies = checkpoint['test_accuracies']
+        start_epoch = checkpoint['epoch']
+        print(f"Resuming from epoch {start_epoch}.")
+except FileNotFoundError:
+    print("No saved model found. Starting from scratch.")
+    start_epoch = 0
+
+# 1. Train/Test Gradient Loss Graph
+plt.figure(figsize=(10, 5))
+plt.plot(range(1, len(train_gradient_losses) + 1), train_gradient_losses, label='Train Gradient Loss')
+plt.plot(range(1, len(test_gradient_losses) + 1), test_gradient_losses, label='Test Gradient Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Gradient Loss')
+plt.title('Train/Test Gradient Loss Over Epochs')
+plt.legend()
+plt.show()
+
+# 2. Train/Test Accuracy Graph
+plt.figure(figsize=(10, 5))
+plt.plot(range(1, len(train_accuracies) + 1), train_accuracies, label='Train Accuracy')
+plt.plot(range(1, len(test_accuracies) + 1), test_accuracies, label='Test Accuracy')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy (%)')
+plt.title('Training and Test Accuracy Over Epochs')
+plt.legend()
+plt.show()
+
+# 3. Histogram Plot
+
+def calculate_gradient_loss(model, inputs, targets, criterion, device):
+    inputs.requires_grad = True
+    outputs = model(inputs)
+    loss = criterion(outputs, targets)
+    loss.backward()
+    # Return gradient norms for each input sample
+    return inputs.grad.view(inputs.size(0), -1).norm(2, dim=1).cpu().detach().numpy()
+
+try:
+    with open('trained_model_epoch.pkl', 'rb') as f:
+        checkpoint = pickle.load(f)
+        train_gradient_losses = checkpoint['train_gradient_losses']
+        test_gradient_losses = checkpoint['test_gradient_losses']
+except FileNotFoundError:
+    print("No saved model found. Please ensure the trained_model_epoch.pkl file is available.")
+    train_gradient_losses, test_gradient_losses = [], []
+
+
+    train_gradient_losses = []
+    test_gradient_losses = []
+
+    for images, labels in train_loader:
+        images, labels = images.to(device), labels.to(device)
+        train_gradient_losses.extend(calculate_gradient_loss(model, images, labels, criterion, device))
+
+    for images, labels in test_loader:
+        images, labels = images.to(device), labels.to(device)
+        test_gradient_losses.extend(calculate_gradient_loss(model, images, labels, criterion, device))
+
+plt.figure(figsize=(10, 5))
+plt.hist(train_gradient_losses, bins=30, alpha=0.7, label='Train Gradient Loss')
+plt.hist(test_gradient_losses, bins=30, alpha=0.7, label='Test Gradient Loss')
+plt.xlabel('Gradient Loss')
+plt.ylabel('Frequency')
+plt.title('Updated Histogram of Gradient Loss')
+plt.legend()
+plt.show()
+
+
+# 4. Average Loss vs Noisy Labels
+noisy_label_percentages = np.arange(0, 21)
+noisy_gradient_losses = []
+
+for pct in noisy_label_percentages:
+    num_noisy = int(len(train_dataset.targets) * pct / 100)
+    noisy_indices = np.random.choice(len(train_dataset.targets), num_noisy, replace=False)
+
+    noisy_targets = np.array(train_dataset.targets, dtype=np.int64)
+    noisy_targets[noisy_indices] = np.random.randint(0, 10, size=num_noisy)
+
+    noisy_loader = DataLoader(TensorDataset(
+        torch.tensor(train_dataset.data, dtype=torch.float32).permute(0, 3, 1, 2),  # Convert images
+        torch.tensor(noisy_targets, dtype=torch.long)  # Use the noisy labels
+    ), batch_size=batch_size, shuffle=True)
+
+    batch_gradient_losses = []
+    for images, labels in noisy_loader:
+        grad_loss = calculate_gradient_loss(model, images.to(device), labels.to(device), criterion, device)
+        batch_gradient_losses.extend(grad_loss)  # Flatten and extend the list
+
+    noisy_grad_loss = np.mean(batch_gradient_losses)
+    noisy_gradient_losses.append(noisy_grad_loss)
+
+plt.figure(figsize=(10, 5))
+plt.plot(noisy_label_percentages, noisy_gradient_losses, label='Average Gradient Loss with Noisy Labels')
+plt.xlabel('% of Noisy Labels')
+plt.ylabel('Average Gradient Loss')
+plt.title('Average Gradient Loss vs % of Noisy Labels')
+plt.legend()
+plt.show()
+
+
+# % of Noisy Labels vs Loss
+noisy_label_percentages = np.arange(0, 21)
+noisy_gradient_losses = []
+
+for pct in noisy_label_percentages:
+    num_noisy = int(len(train_dataset.targets) * pct / 100)
+    noisy_indices = np.random.choice(len(train_dataset.targets), num_noisy, replace=False)
+
+    noisy_targets = np.array(train_dataset.targets, dtype=np.int64)
+    noisy_targets[noisy_indices] = np.random.randint(0, 10, size=num_noisy)
+
+    noisy_loader = DataLoader(TensorDataset(
+        torch.tensor(train_dataset.data, dtype=torch.float32).permute(0, 3, 1, 2),  
+        torch.tensor(noisy_targets, dtype=torch.long)  
+    ), batch_size=batch_size, shuffle=True)
+
+    batch_gradient_losses = []
+    for images, labels in noisy_loader:
+        grad_loss = calculate_gradient_loss(model, images.to(device), labels.to(device), criterion, device)
+        batch_gradient_losses.extend(grad_loss)  # Flatten and extend the list
+
+    noisy_grad_loss = np.mean(batch_gradient_losses)
+    noisy_gradient_losses.append(noisy_grad_loss)
+
+plt.figure(figsize=(10, 5))
+plt.plot(noisy_label_percentages, noisy_gradient_losses, label='Average Gradient Loss with Noisy Labels')
+plt.xlabel('% of Noisy Labels')
+plt.ylabel('Average Gradient Loss')
+plt.title('Average Gradient Loss vs % of Noisy Labels')
+plt.legend()
+plt.show()
+
+
+# 6. Heatmap with fraction of data kept and total examples
+percentages = np.arange(0, 41)
+accuracy_results = []
+gradient_loss_results = []
+
+for pct in percentages:
+    num_remove = int(len(train_dataset.data) * pct / 100)
+    indices = np.argsort(train_gradient_losses[-1])[-num_remove:]
+
+    pruned_data = np.delete(train_dataset.data, indices, axis=0)
+    pruned_targets = np.delete(train_dataset.targets, indices)
+
+    pruned_loader = DataLoader(TensorDataset(
+        torch.tensor(pruned_data, dtype=torch.float32).permute(0, 3, 1, 2),
+        torch.tensor(pruned_targets, dtype=torch.long)
+    ), batch_size=batch_size, shuffle=True)
+
+    for _ in range(10):
+        train_epoch(model, pruned_loader, optimizer, criterion)
+
+    _, accuracy = evaluate(model, test_loader, criterion)
+    accuracy_results.append(accuracy)
+
+    gradient_losses = []
+    for images, labels in pruned_loader:
+        loss = calculate_gradient_loss(model, images.to(device), labels.to(device))
+        if isinstance(loss, torch.Tensor):
+            loss = loss.item()
+        gradient_losses.append(loss)
+
+    avg_gradient_loss = np.mean(gradient_losses)
+    gradient_loss_results.append(avg_gradient_loss)
+
+high_loss_percentages = np.arange(0, 41)
+high_loss_accuracy = []
+
+for pct in high_loss_percentages:
+    num_remove = int(len(train_dataset.data) * pct / 100)
+    high_loss_indices = np.argsort(train_gradient_losses[-1])[-num_remove:]
+
+    pruned_data = np.delete(train_dataset.data, high_loss_indices, axis=0)
+    pruned_targets = np.delete(train_dataset.targets, high_loss_indices)
+
+    pruned_loader = DataLoader(TensorDataset(
+        torch.tensor(pruned_data, dtype=torch.float32).permute(0, 3, 1, 2),
+        torch.tensor(pruned_targets, dtype=torch.long)
+    ), batch_size=batch_size, shuffle=True)
+
+    for _ in range(10):
+        train_epoch(model, pruned_loader, optimizer, criterion)
+
+    _, accuracy = evaluate(model, test_loader, criterion)
+    high_loss_accuracy.append(accuracy)
+
+fractions_data_kept = np.linspace(0.2, 1.0, len(high_loss_percentages))
+total_examples = np.logspace(2, 4, len(high_loss_percentages)) 
+
+heatmap_data = np.zeros((len(fractions_data_kept), len(total_examples)))
+for i, frac in enumerate(fractions_data_kept):
+    for j, total in enumerate(total_examples):
+        heatmap_data[i, j] = accuracy_results[min(j, len(accuracy_results) - 1)] * frac
+
+plt.figure(figsize=(8, 6))
+sns.heatmap(
+    heatmap_data,
+    cmap="coolwarm",
+    xticklabels=[f'{int(x):,}' for x in total_examples],
+    yticklabels=[f'{frac:.1f}' for frac in fractions_data_kept],
+    cbar_kws={'label': 'Accuracy Change'}
+)
+plt.xlabel('Total examples (log scale)')
+plt.ylabel('Fraction of data kept')
+plt.title('ResNet18 on CIFAR-10')
+plt.show()
