@@ -73,11 +73,6 @@ test_gradient_losses = []
 train_accuracies = []
 test_accuracies = []
 
-
-
-
-
-
 try:
     with open('trained_model_epoch.pkl', 'rb') as f:
         checkpoint = pickle.load(f)
